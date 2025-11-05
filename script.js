@@ -226,7 +226,7 @@ class VarietyMinimization {
     // DOM elements
     this.elements = {
       pauseBtn: document.getElementById('pause-btn'),
-      rotateBtn: document.getElementById('rotate-btn'),
+      resetBtn: document.getElementById('reset-btn'),
       bodiesSlider: document.getElementById('bodies-slider'),
       bodiesValue: document.getElementById('bodies-value'),
       learningSlider: document.getElementById('learning-slider'),
@@ -237,9 +237,18 @@ class VarietyMinimization {
       theoreticalMin: document.getElementById('theoretical-min')
     };
     
+    // Store default values
+    this.defaults = {
+      numBodies: 8,
+      learningRate: 0.05,
+      simulationSpeed: 0.5,
+      isPaused: false,
+      autoRotate: false
+    };
+    
     // Event listeners
     this.elements.pauseBtn.addEventListener('click', () => this.togglePause());
-    this.elements.rotateBtn.addEventListener('click', () => this.toggleAutoRotate());
+    this.elements.resetBtn.addEventListener('click', () => this.resetToDefaults());
     
     this.elements.bodiesSlider.addEventListener('input', (e) => {
       this.numBodies = parseInt(e.target.value);
@@ -256,6 +265,35 @@ class VarietyMinimization {
       this.simulationSpeed = parseFloat(e.target.value);
       this.elements.speedValue.textContent = this.simulationSpeed.toFixed(1);
     });
+  }
+  
+  resetToDefaults() {
+    // Reset all values to defaults
+    this.numBodies = this.defaults.numBodies;
+    this.learningRate = this.defaults.learningRate;
+    this.simulationSpeed = this.defaults.simulationSpeed;
+    this.isPaused = this.defaults.isPaused;
+    this.autoRotate = this.defaults.autoRotate;
+    
+    // Update UI elements
+    this.elements.bodiesSlider.value = this.defaults.numBodies;
+    this.elements.bodiesValue.textContent = this.defaults.numBodies;
+    this.elements.learningSlider.value = this.defaults.learningRate;
+    this.elements.learningValue.textContent = this.defaults.learningRate.toFixed(2);
+    this.elements.speedSlider.value = this.defaults.simulationSpeed;
+    this.elements.speedValue.textContent = this.defaults.simulationSpeed.toFixed(1);
+    
+    // Reset button states
+    this.elements.pauseBtn.textContent = this.defaults.isPaused ? '▶' : '⏸';
+    
+    // Reinitialize simulation
+    this.initializeBodies(this.defaults.numBodies);
+    
+    // Add visual feedback for reset
+    this.elements.resetBtn.textContent = '✓ Reset';
+    setTimeout(() => {
+      this.elements.resetBtn.textContent = '🔄 Reset';
+    }, 1000);
   }
   
   onMouseDown(event) {
