@@ -37,7 +37,7 @@ Time = the order of successive relations.
 If there were no variety (no multiplicity of substances/events), then there would be no space or time at all because order without relata collapses. This makes relationalism a natural extension of his variety principle.
 
 
-### 🔍 Key Mathematical Insight: Scale Invariance
+### Key Mathematical Insight: Scale Invariance
 
 **Variety is scale invariant**: For any scalar `c > 0`, we have `V(cx) = V(x)`. This means only the *direction* of particle positions matters for optimization, not their absolute scale.
 
@@ -46,21 +46,21 @@ If there were no variety (no multiplicity of substances/events), then there woul
 <table>
   <tr>
     <td align="center">
-      <strong>1. Initial Configuration</strong><br>
+      <strong>1. Scale 1</strong><br>
       <img src="assets/image.png" alt="Scale Invariance Examples" width="300"/>
     </td>
     <td align="center">
-      <strong>2. Configuration A</strong><br>
+      <strong>2. Scale 2</strong><br>
       <img src="assets/image-1.png" alt="Configuration 1" width="300"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <strong>3. Configuration B</strong><br>
+      <strong>3. Scale 3</strong><br>
       <img src="assets/image-2.png" alt="Configuration 2" width="300"/>
     </td>
     <td align="center">
-      <strong>4. Configuration C</strong><br>
+      <strong>4. Scale 4</strong><br>
       <img src="assets/image-3.png" alt="Configuration 3" width="300"/>
     </td>
   </tr>
