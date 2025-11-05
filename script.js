@@ -137,6 +137,15 @@ class VarietyMinimization {
     this.animationId = null;
     this.frameCounter = 0;
     
+    // Dragging functionality
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.isDragging = false;
+    this.selectedParticle = null;
+    this.dragPlane = new THREE.Plane();
+    this.intersection = new THREE.Vector3();
+    this.offset = new THREE.Vector3();
+    
     this.init();
   }
   
@@ -204,6 +213,11 @@ class VarietyMinimization {
     this.controls.dampingFactor = 0.05;
     this.controls.rotateSpeed = 0.5;
     
+    // Add mouse event listeners for dragging
+    this.renderer.domElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    this.renderer.domElement.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    
     // Handle resize
     window.addEventListener('resize', () => this.handleResize());
   }
@@ -242,6 +256,91 @@ class VarietyMinimization {
       this.simulationSpeed = parseFloat(e.target.value);
       this.elements.speedValue.textContent = this.simulationSpeed.toFixed(1);
     });
+  }
+  
+  onMouseDown(event) {
+    // Only handle right mouse button for ball dragging
+    if (event.button !== 2) return;
+    
+    // Prevent context menu
+    event.preventDefault();
+    
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.particles);
+    
+    if (intersects.length > 0) {
+      // Disable orbit controls when dragging a particle
+      this.controls.enabled = false;
+      this.isDragging = true;
+      this.selectedParticle = intersects[0].object;
+      
+      // Find the index of the selected particle
+      this.selectedParticleIndex = this.particles.indexOf(this.selectedParticle);
+      
+      // Set up drag plane perpendicular to camera direction
+      const cameraDirection = new THREE.Vector3();
+      this.camera.getWorldDirection(cameraDirection);
+      this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, this.selectedParticle.position);
+      
+      // Calculate offset between mouse and particle center
+      if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersection)) {
+        this.offset.copy(this.intersection).sub(this.selectedParticle.position);
+      }
+      
+      // Visual feedback - make selected particle slightly larger and more transparent
+      this.selectedParticle.scale.setScalar(1.2);
+      this.selectedParticle.material.transparent = true;
+      this.selectedParticle.material.opacity = 0.7;
+    }
+  }
+  
+  onMouseMove(event) {
+    if (!this.isDragging || !this.selectedParticle) return;
+    
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    
+    if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersection)) {
+      const newPosition = this.intersection.clone().sub(this.offset);
+      
+      // Apply boundary constraints
+      newPosition.x = Math.max(-10, Math.min(10, newPosition.x));
+      newPosition.y = Math.max(-10, Math.min(10, newPosition.y));
+      newPosition.z = Math.max(-10, Math.min(10, newPosition.z));
+      
+      // Update particle position
+      this.selectedParticle.position.copy(newPosition);
+      
+      // Update the position in our physics array
+      if (this.selectedParticleIndex !== -1) {
+        this.positions[this.selectedParticleIndex].copy(newPosition);
+        // Reset velocity when manually positioning
+        this.velocities[this.selectedParticleIndex].set(0, 0, 0);
+      }
+    }
+  }
+  
+  onMouseUp(event) {
+    // Only handle right mouse button release
+    if (event.button === 2 && this.isDragging && this.selectedParticle) {
+      // Restore particle appearance
+      this.selectedParticle.scale.setScalar(1.0);
+      this.selectedParticle.material.transparent = false;
+      this.selectedParticle.material.opacity = 1.0;
+      
+      // Re-enable orbit controls
+      this.controls.enabled = true;
+      this.isDragging = false;
+      this.selectedParticle = null;
+      this.selectedParticleIndex = -1;
+    }
   }
   
   initializeBodies(n) {
@@ -377,37 +476,40 @@ class VarietyMinimization {
     if (!this.isPaused) {
       this.frameCounter += this.simulationSpeed;
       
-      // Only run simulation when frameCounter >= 1
-      while (this.frameCounter >= 1) {
-        const { variety: currentVariety, gradients } = this.calculateVarietyAndGradient();
-        this.variety = currentVariety;
-        this.elements.varietyValue.textContent = currentVariety.toFixed(2);
+        // Only run simulation when frameCounter >= 1
+        while (this.frameCounter >= 1) {
+          const { variety: currentVariety, gradients } = this.calculateVarietyAndGradient();
+          this.variety = currentVariety;
+          this.elements.varietyValue.textContent = currentVariety.toFixed(2);
 
-        // Update positions using gradient descent (MINIMIZATION)
-        this.positions.forEach((pos, i) => {
-          // Add gradient to velocity with damping
-          this.velocities[i].multiplyScalar(0.9);
-          // Note: gradients are already negated for minimization
-          this.velocities[i].addScaledVector(gradients[i], this.learningRate);
-          
-          // Update position
-          pos.add(this.velocities[i]);
-          
-          // Boundary constraints with soft bounce
-          ['x', 'y', 'z'].forEach(axis => {
-            if (pos[axis] > 10) {
-              pos[axis] = 10;
-              this.velocities[i][axis] *= -0.5;
-            } else if (pos[axis] < -10) {
-              pos[axis] = -10;
-              this.velocities[i][axis] *= -0.5;
+          // Update positions using gradient descent (MINIMIZATION)
+          this.positions.forEach((pos, i) => {
+            // Skip updating the particle being dragged
+            if (this.isDragging && i === this.selectedParticleIndex) {
+              return;
             }
-          });
-          
-          this.particles[i].position.copy(pos);
-        });
-        
-        this.frameCounter -= 1;
+            
+            // Add gradient to velocity with damping
+            this.velocities[i].multiplyScalar(0.9);
+            // Note: gradients are already negated for minimization
+            this.velocities[i].addScaledVector(gradients[i], this.learningRate);
+            
+            // Update position
+            pos.add(this.velocities[i]);
+            
+            // Boundary constraints with soft bounce
+            ['x', 'y', 'z'].forEach(axis => {
+              if (pos[axis] > 10) {
+                pos[axis] = 10;
+                this.velocities[i][axis] *= -0.5;
+              } else if (pos[axis] < -10) {
+                pos[axis] = -10;
+                this.velocities[i][axis] *= -0.5;
+              }
+            });
+            
+            this.particles[i].position.copy(pos);
+          });        this.frameCounter -= 1;
       }
     }
 
@@ -433,6 +535,10 @@ class VarietyMinimization {
       this.controls.dispose();
     }
     if (this.renderer) {
+      // Remove mouse event listeners
+      this.renderer.domElement.removeEventListener('mousedown', (e) => this.onMouseDown(e));
+      this.renderer.domElement.removeEventListener('mousemove', (e) => this.onMouseMove(e));
+      this.renderer.domElement.removeEventListener('mouseup', (e) => this.onMouseUp(e));
       this.renderer.dispose();
     }
     window.removeEventListener('resize', () => this.handleResize());
