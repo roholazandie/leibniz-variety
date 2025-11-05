@@ -2,6 +2,8 @@
 
 An interactive 3D visualization of the **Leibniz Variety** optimization problem, demonstrating how particles arrange themselves to minimize a mathematical variety function.
 
+Live demo [here](https://leibniz-variety.vercel.app/) 
+
 
 ## Overview
 
